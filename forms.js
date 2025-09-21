@@ -337,16 +337,22 @@ function showPaymentSuccessNotification(result) {
                 View on XRPL Explorer
             </a>
         </div>
+        <div id="attestation-status-${result.txHash}" style="margin-top: 8px; font-size: 0.8em; opacity: 0.8;">
+            🔒 Starting attestation...
+        </div>
     `;
     
     document.body.appendChild(notification);
     
-    // Remove notification after 8 seconds
+    // Auto-attest the successful payment
+    autoAttestPayment(result);
+    
+    // Remove notification after delay
     setTimeout(() => {
         if (notification.parentNode) {
             notification.parentNode.removeChild(notification);
         }
-    }, 8000);
+    }, 10000); // Extended time to show attestation status
 }
 
 // Function to get stored transaction hashes
@@ -520,6 +526,560 @@ function useMockXrpToUsdtConversion(amount, conversionAmountEl, conversionXrpEl)
 
 // Send payment functionality
 async function sendPayment() {
+    // Show payment method selection modal
+    showPaymentMethodModal();
+}
+
+// Show modal for payment method selection
+function showPaymentMethodModal() {
+    const modal = document.createElement('div');
+    modal.className = 'payment-method-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closePaymentMethodModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Choose Payment Method</h3>
+                <button class="modal-close" onclick="closePaymentMethodModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="payment-methods">
+                    <button class="payment-method-btn xrpl-method" onclick="useXRPLPayment()">
+                        <div class="method-icon">🔐</div>
+                        <div class="method-info">
+                            <div class="method-title">Built-in XRPL</div>
+                            <div class="method-desc">Use your connected XRPL wallet</div>
+                        </div>
+                    </button>
+                    <button class="payment-method-btn gemwallet-method" onclick="useGemWalletPayment()">
+                        <div class="method-icon">💎</div>
+                        <div class="method-info">
+                            <div class="method-title">GemWallet (Testnet)</div>
+                            <div class="method-desc">Use GemWallet browser extension on XRPL testnet</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add modal styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .payment-method-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal-content {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: #fff;
+            margin: 0;
+            font-size: 20px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .payment-methods {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .payment-method-btn {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            width: 100%;
+        }
+        
+        .payment-method-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .method-icon {
+            font-size: 32px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(193, 227, 40, 0.2);
+            border-radius: 12px;
+        }
+        
+        .method-info {
+            flex: 1;
+        }
+        
+        .method-title {
+            color: #fff;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        
+        .method-desc {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+    `;
+    
+    document.head.appendChild(style);
+}
+
+// Close payment method modal
+function closePaymentMethodModal() {
+    const modal = document.querySelector('.payment-method-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Use built-in XRPL payment
+async function useXRPLPayment() {
+    closePaymentMethodModal();
+    await originalSendPayment();
+}
+
+// Use GemWallet payment
+async function useGemWalletPayment() {
+    closePaymentMethodModal();
+    
+    // Get form data
+    const assetSelect = document.getElementById('payAssetSelect');
+    const amountInput = document.getElementById('payAmountInput');
+    const recipientInput = document.getElementById('payRecipientInput');
+    const messageInput = document.getElementById('payMessageInput');
+    
+    const recipient = recipientInput.value.trim();
+    const amount = amountInput.value.trim();
+    const memo = messageInput.value.trim();
+    const asset = assetSelect.value;
+    
+    // Validate form data
+    if (!recipient) {
+        alert('Please enter a recipient address');
+        return;
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+        alert('Please enter a valid amount');
+        return;
+    }
+    
+    // For GemWallet, we only support XRP payments directly
+    if (asset !== 'XRP') {
+        if (confirm(`GemWallet only supports XRP payments directly. Would you like to convert ${amount} ${asset} to XRP and proceed?`)) {
+            // Calculate XRP equivalent (you can enhance this with real conversion)
+            const xrpAmount = prompt(`Please enter the equivalent XRP amount for ${amount} ${asset}:`);
+            if (xrpAmount && parseFloat(xrpAmount) > 0) {
+                await processGemWalletPayment(recipient, xrpAmount, memo);
+            }
+        }
+        return;
+    }
+    
+    // Process XRP payment directly
+    await processGemWalletPayment(recipient, amount, memo);
+}
+
+// Process GemWallet payment within the same page
+async function processGemWalletPayment(recipient, amount, memo) {
+    try {
+        // Validate inputs
+        const amountNum = parseFloat(amount);
+        if (!amountNum || amountNum <= 0) {
+            throw new Error('Please enter a valid amount');
+        }
+        
+        if (!recipient || !recipient.trim()) {
+            throw new Error('Please enter a recipient address');
+        }
+        
+        // Show processing state
+        showNotification('Connecting to GemWallet...', 'info');
+        
+        // Wait for GemWallet API
+        const GemWalletApi = await waitForGemApi(5000);
+        
+        // Check installation
+        const installedResp = await GemWalletApi.isInstalled();
+        if (!installedResp?.result?.isInstalled) {
+            throw new Error('GemWallet is not installed or enabled');
+        }
+        
+        // Ensure we're on testnet
+        try {
+            await GemWalletApi.setNetwork({
+                networkID: 1,
+                name: "testnet", 
+                server: "wss://s.altnet.rippletest.net:51233"
+            });
+            showNotification('Switched to XRPL Testnet', 'info');
+        } catch (networkError) {
+            console.log('Network switch not supported or already on testnet:', networkError);
+        }
+        
+        // Get user address
+        const addrResp = await GemWalletApi.getAddress();
+        if (addrResp?.type !== 'response' || !addrResp.result?.address) {
+            throw new Error('Failed to get wallet address');
+        }
+        
+        const userAddress = addrResp.result.address;
+        showNotification(`Connected to TESTNET: ${userAddress.substring(0, 10)}... (No real value)`, 'success');
+        
+        // Validate accounts before sending payment
+        showNotification('Validating accounts...', 'info');
+        const validation = await validateAndPreparePayment(
+            userAddress,
+            recipient.trim(),
+            amount
+        );
+        
+        // Use suggested amount if provided (for account activation)
+        const finalAmount = validation.suggestedAmount ? validation.suggestedAmount : amount;
+        
+        if (validation.suggestedAmount) {
+            showNotification(`Amount increased to ${validation.suggestedAmount} XRP for account activation`, 'info');
+        }
+        
+        // Convert XRP to drops
+        const amountInDrops = Math.floor(parseFloat(finalAmount) * 1000000).toString();
+        
+        const paymentRequest = {
+            amount: amountInDrops,
+            destination: recipient,
+            network: {
+                networkID: 1, // Testnet network ID
+                name: "testnet",
+                server: "wss://s.altnet.rippletest.net:51233"
+            }
+        };
+        
+        // Add memo if provided
+        if (memo) {
+            paymentRequest.memos = [{
+                memo: {
+                    memoData: stringToHex(memo),
+                    memoFormat: stringToHex('text/plain')
+                }
+            }];
+        }
+        
+        showNotification('Requesting payment authorization...', 'info');
+        
+        // Request payment
+        const resp = await GemWalletApi.sendPayment(paymentRequest);
+        
+        if (resp?.type === "response" && resp.result?.hash) {
+            const txHash = resp.result.hash;
+            
+            // Show success notification
+            const successResult = {
+                txHash: txHash,
+                delivered: amountInDrops,
+                status: 'Success',
+                amount: amount,
+                asset: 'XRP',
+                from: userAddress,
+                to: recipient,
+                requestId: null
+            };
+            
+            showPaymentSuccessNotification(successResult);
+            
+            // Send to backend for tracking
+            try {
+                await fetch('/api/gemwallet/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        hash: txHash,
+                        from: userAddress,
+                        to: recipient,
+                        amount: amount,
+                        memo: memo,
+                        timestamp: Date.now()
+                    })
+                });
+                
+                // Submit attestation
+                await fetch('/api/attest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        xrplTxHash: txHash,
+                        from: userAddress,
+                        to: recipient,
+                        amount: amount,
+                        asset: 'XRP',
+                        memo: memo,
+                        source: 'gemwallet',
+                        timestamp: Date.now()
+                    })
+                });
+                
+            } catch (trackError) {
+                console.warn('Failed to track transaction or submit attestation:', trackError);
+            }
+            
+            // Clear form
+            document.getElementById('payAmountInput').value = '';
+            document.getElementById('payMessageInput').value = '';
+            
+        } else if (resp?.type === "reject") {
+            showNotification('Payment was rejected by user', 'warning');
+        } else {
+            throw new Error('Unknown response from GemWallet');
+        }
+        
+    } catch (error) {
+        console.error('GemWallet payment error:', error);
+        showNotification(`GemWallet error: ${error.message}`, 'error');
+    }
+}
+
+// Wait for GemWallet API injection
+function waitForGemApi(timeout = 5000) {
+    if (window.GemWalletApi) return Promise.resolve(window.GemWalletApi);
+    return new Promise((resolve, reject) => {
+        const start = Date.now();
+        const timer = setInterval(() => {
+            if (window.GemWalletApi) {
+                clearInterval(timer);
+                resolve(window.GemWalletApi);
+            } else if (Date.now() - start > timeout) {
+                clearInterval(timer);
+                reject(new Error('Timeout - GemWallet extension not found'));
+            }
+        }, 100);
+    });
+}
+
+// Helper function to convert string to hex (browser-compatible)
+function stringToHex(str) {
+    return Array.from(new TextEncoder().encode(str))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
+}
+
+// Enhanced notification function
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    
+    const colors = {
+        success: '#4CAF50',
+        error: '#f44336',
+        warning: '#ff9800',
+        info: '#2196F3'
+    };
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${colors[type] || colors.info};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 1001;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        max-width: 300px;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 4000);
+}
+
+// Attestation functionality
+async function submitAttestation(xrplTxHash, requestId = null, amount = null, asset = null, from = null, to = null) {
+    try {
+        console.log('🔒 Submitting attestation for tx:', xrplTxHash);
+        
+        const attestationData = {
+            xrplTxHash,
+            requestId,
+            amount,
+            asset,
+            from,
+            to,
+            timestamp: Date.now()
+        };
+        
+        const response = await fetch('/api/attest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(attestationData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+            console.log('✅ Attestation submitted successfully:', result);
+            showNotification(`Attestation started for transaction`, 'success');
+            return result;
+        } else {
+            console.error('❌ Attestation failed:', result.error);
+            showNotification(`Attestation failed: ${result.error}`, 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ Attestation error:', error);
+        showNotification(`Attestation error: ${error.message}`, 'error');
+        return null;
+    }
+}
+
+// Get attestation status
+async function getAttestationStatus(txHash) {
+    try {
+        const response = await fetch(`/api/attest/${txHash}`);
+        const result = await response.json();
+        
+        if (result.ok) {
+            console.log('🔍 Attestation status:', result);
+            return result;
+        } else {
+            console.error('❌ Failed to get attestation status');
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ Error getting attestation status:', error);
+        return null;
+    }
+}
+
+// Auto-attest successful payments
+async function autoAttestPayment(paymentResult) {
+    if (paymentResult && paymentResult.txHash) {
+        // Extract payment details
+        const txHash = paymentResult.txHash;
+        const amount = paymentResult.delivered || paymentResult.amount || null;
+        const asset = paymentResult.asset || 'XRP';
+        const from = paymentResult.from || null;
+        const to = paymentResult.to || null;
+        const requestId = paymentResult.requestId || null;
+        
+        // Submit attestation automatically
+        setTimeout(async () => {
+            try {
+                const attestationResult = await submitAttestation(txHash, requestId, amount, asset, from, to);
+                
+                // Update the notification status
+                const statusElement = document.getElementById(`attestation-status-${txHash}`);
+                if (statusElement) {
+                    if (attestationResult && attestationResult.ok) {
+                        statusElement.innerHTML = '✅ Attestation completed';
+                        statusElement.style.color = '#c1e328';
+                    } else {
+                        statusElement.innerHTML = '❌ Attestation failed';
+                        statusElement.style.color = '#ff6b6b';
+                    }
+                }
+            } catch (error) {
+                console.error('Auto-attestation error:', error);
+                const statusElement = document.getElementById(`attestation-status-${txHash}`);
+                if (statusElement) {
+                    statusElement.innerHTML = '❌ Attestation error';
+                    statusElement.style.color = '#ff6b6b';
+                }
+            }
+        }, 2000); // Small delay to ensure transaction is processed
+    }
+}
+
+// Original XRPL payment function (renamed)
+async function originalSendPayment() {
     const btn = document.querySelector('.send-payment-btn');
     const originalText = btn.textContent;
     
@@ -541,11 +1101,39 @@ async function sendPayment() {
     btn.style.opacity = '0.7';
     
     try {
+        // Validate form data
+        const amount = parseFloat(amountInput.value);
+        const recipient = recipientInput.value.trim();
+        
+        if (!amount || amount <= 0) {
+            throw new Error('Please enter a valid amount');
+        }
+        
+        if (!recipient) {
+            throw new Error('Please enter a recipient address');
+        }
+        
+        // Validate accounts before sending payment
+        showNotification('Validating accounts...', 'info');
+        const validation = await validateAndPreparePayment(
+            window.walletState.address,
+            recipient,
+            amount.toString()
+        );
+        
+        // Use suggested amount if provided (for account activation)
+        const finalAmount = validation.suggestedAmount ? parseFloat(validation.suggestedAmount) : amount;
+        
+        if (validation.suggestedAmount) {
+            amountInput.value = validation.suggestedAmount;
+            showNotification(`Amount increased to ${validation.suggestedAmount} XRP for account activation`, 'info');
+        }
+        
         // Create a mock request ID for direct payment
         const directPaymentId = 'direct_' + Date.now();
         
         // Use the XRPL payment function from wallet.js
-        const result = await window.processXRPLPayment(directPaymentId, parseFloat(amountInput.value));
+        const result = await window.processXRPLPayment(directPaymentId, finalAmount);
         
         if (result.ok) {
             btn.textContent = '✅ Payment Sent!';
@@ -701,7 +1289,113 @@ function declineRequest(requestId) {
     }
 }
 
+// Check if account exists and is funded
+async function checkAccountStatus(address) {
+    try {
+        const response = await fetch(`/api/account/${address}`);
+        const result = await response.json();
+        
+        if (result.ok) {
+            console.log('🔍 Account status:', result);
+            return result;
+        } else {
+            throw new Error(result.error || 'Failed to check account');
+        }
+    } catch (error) {
+        console.error('❌ Account check error:', error);
+        return { ok: false, exists: false, funded: false, error: error.message };
+    }
+}
+
+// Fund account using testnet faucet
+async function fundAccount(address) {
+    try {
+        showNotification(`Funding test account ${address.substring(0, 10)}...`, 'info');
+        
+        const response = await fetch('/api/fund-account', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ address })
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+            showNotification(`Successfully funded ${address.substring(0, 10)}... with test XRP`, 'success');
+            return result;
+        } else {
+            throw new Error(result.error || 'Failed to fund account');
+        }
+    } catch (error) {
+        console.error('❌ Funding error:', error);
+        showNotification(`Failed to fund account: ${error.message}`, 'error');
+        return { ok: false, error: error.message };
+    }
+}
+
+// Enhanced payment function with account validation
+async function validateAndPreparePayment(fromAddress, toAddress, amount) {
+    try {
+        // Check sender account
+        const senderStatus = await checkAccountStatus(fromAddress);
+        console.log('🔍 Sender account status:', senderStatus);
+        
+        if (!senderStatus.exists) {
+            const shouldFund = confirm(`Your wallet account ${fromAddress.substring(0, 10)}... doesn't exist on testnet. Would you like to fund it with test XRP to activate it?`);
+            if (shouldFund) {
+                const fundResult = await fundAccount(fromAddress);
+                if (!fundResult.ok) {
+                    throw new Error('Failed to fund sender account');
+                }
+                // Wait a bit for the funding to process
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            } else {
+                throw new Error('Sender account needs to be activated to send payments');
+            }
+        } else if (!senderStatus.funded) {
+            const shouldFund = confirm(`Your wallet account ${fromAddress.substring(0, 10)}... has ${senderStatus.balance} XRP but needs at least 1 XRP to be considered funded. Would you like to add more test XRP?`);
+            if (shouldFund) {
+                const fundResult = await fundAccount(fromAddress);
+                if (!fundResult.ok) {
+                    throw new Error('Failed to fund sender account');
+                }
+                // Wait a bit for the funding to process
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            } else {
+                throw new Error('Sender account needs more funding to send payments');
+            }
+        }
+        
+        // Check if sender has enough balance (reduced threshold for testnet)
+        if (parseFloat(senderStatus.balance) < (parseFloat(amount) + 0.01)) { // amount + minimal fees for testnet
+            throw new Error(`Insufficient balance. Has ${senderStatus.balance} XRP, needs ${amount} XRP + fees (0.01 XRP)`);
+        }
+        
+        // Check destination account (Testnet mode - lower minimum)
+        const destStatus = await checkAccountStatus(toAddress);
+        if (!destStatus.exists && parseFloat(amount) < 1) {
+            const shouldIncrease = confirm(`Destination account doesn't exist. On testnet, first payment must be at least 1 XRP to activate it. Would you like to increase the amount to 1 XRP?`);
+            if (shouldIncrease) {
+                return { validated: true, suggestedAmount: '1' };
+            } else {
+                throw new Error('Payment amount too low for account activation (minimum 1 XRP on testnet)');
+            }
+        }
+        
+        return { validated: true };
+        
+    } catch (error) {
+        console.error('❌ Payment validation error:', error);
+        throw error;
+    }
+}
+
 // Export new functions to global scope
+window.checkAccountStatus = checkAccountStatus;
+window.fundAccount = fundAccount;
+window.validateAndPreparePayment = validateAndPreparePayment;
 window.updatePayAsset = updatePayAsset;
 window.updatePayAmount = updatePayAmount;
 window.updatePayRecipient = updatePayRecipient;

@@ -241,6 +241,63 @@ app.post('/api/payment/process', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Request already processed' });
     }
 
+    // Check if sender account exists and has balance
+    try {
+      const senderInfo = await xrplClient.request({
+        command: 'account_info',
+        account: wallet.classicAddress,
+        ledger_index: 'validated'
+      });
+      
+      console.log('💰 Sender account info:', {
+        address: wallet.classicAddress,
+        balance: senderInfo.result.account_data.Balance,
+        sequence: senderInfo.result.account_data.Sequence
+      });
+      
+      const senderBalance = parseInt(senderInfo.result.account_data.Balance);
+      const requiredAmount = parseInt(xrpl.xrpToDrops(amount.toString())) + 12; // amount + fee
+      
+      if (senderBalance < requiredAmount) {
+        return res.status(400).json({ 
+          ok: false, 
+          error: `Insufficient balance. Has ${xrpl.dropsToXrp(senderBalance)} XRP, needs ${amount} XRP + fees` 
+        });
+      }
+      
+    } catch (senderError) {
+      console.error('❌ Sender account error:', senderError);
+      return res.status(400).json({ 
+        ok: false, 
+        error: `Sender account not found or inactive: ${wallet.classicAddress}` 
+      });
+    }
+
+    // Check if destination account exists
+    try {
+      const destInfo = await xrplClient.request({
+        command: 'account_info',
+        account: request.requesterAddress,
+        ledger_index: 'validated'
+      });
+      
+      console.log('🎯 Destination account info:', {
+        address: request.requesterAddress,
+        balance: destInfo.result.account_data.Balance
+      });
+      
+    } catch (destError) {
+      console.warn('⚠️ Destination account not found, payment will create it:', request.requesterAddress);
+      
+      // For account creation, we need at least 10 XRP
+      if (parseFloat(amount) < 10) {
+        return res.status(400).json({ 
+          ok: false, 
+          error: `Destination account doesn't exist. First payment must be at least 10 XRP to activate the account.` 
+        });
+      }
+    }
+
     // Convert amount to drops (XRP smallest unit)
     const amountInDrops = xrpl.xrpToDrops(amount.toString());
 
@@ -342,6 +399,215 @@ app.get('/', (req, res) => {
       }
     } catch (err) {
       console.error("tx parse error", err);
+    }
+  });
+
+  // ============ API: GemWallet Transaction Tracking ============
+  app.post('/api/gemwallet/track', (req, res) => {
+    const { hash, from, to, amount, memo, timestamp } = req.body;
+    
+    console.log('🔮 GemWallet Transaction Tracked:', {
+      hash,
+      from,
+      to,
+      amount: `${amount} XRP`,
+      memo,
+      explorerUrl: `https://testnet.xrpl.org/transactions/${hash}`
+    });
+    
+    // Store in memory (in production, use a proper database)
+    const gemTransaction = {
+      id: `gem_${Date.now()}`,
+      hash,
+      from,
+      to,
+      amount,
+      memo,
+      timestamp,
+      source: 'gemwallet',
+      explorerUrl: `https://testnet.xrpl.org/transactions/${hash}`
+    };
+    
+    // You can extend this to store in your existing requests object or a separate collection
+    // For now, just log and acknowledge
+    
+    res.json({ 
+      ok: true, 
+      message: 'Transaction tracked successfully',
+      transaction: gemTransaction
+    });
+  });
+
+  // ============ API: Get GemWallet Transactions ============
+  app.get('/api/gemwallet/transactions/:address', (req, res) => {
+    const { address } = req.params;
+    
+    // In a real application, you would query your database for transactions
+    // involving this address. For now, return a placeholder response.
+    
+    res.json({
+      ok: true,
+      address,
+      transactions: [],
+      message: 'GemWallet transaction history endpoint ready'
+    });
+  });
+
+  // ============ API: Attestation Endpoint ============
+  app.post('/api/attest', (req, res) => {
+    console.log('🔒 Received attestation request:', req.body);
+    
+    const { xrplTxHash, requestId, amount, asset, from, to } = req.body;
+    
+    if (!xrplTxHash) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'XRPL transaction hash is required' 
+      });
+    }
+    
+    // Log attestation details
+    console.log('🔍 Attestation Details:', {
+      txHash: xrplTxHash,
+      requestId,
+      amount,
+      asset,
+      from,
+      to,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Store attestation request (in production, use proper database)
+    const attestationId = `attest_${Date.now()}`;
+    const attestationRecord = {
+      id: attestationId,
+      xrplTxHash,
+      requestId,
+      amount,
+      asset,
+      from,
+      to,
+      status: 'started',
+      timestamp: Date.now(),
+      explorerUrl: `https://testnet.xrpl.org/transactions/${xrplTxHash}`
+    };
+    
+    // You can extend this to store in your existing requests object or a separate collection
+    console.log('✅ Attestation record created:', attestationRecord);
+    
+    // Return confirmation
+    res.json({
+      ok: true,
+      message: `Attestation started for tx ${xrplTxHash}`,
+      attestationId,
+      record: attestationRecord
+    });
+  });
+
+  // ============ API: Get Attestation Status ============
+  app.get('/api/attest/:txHash', (req, res) => {
+    const { txHash } = req.params;
+    
+    console.log('🔍 Attestation status requested for:', txHash);
+    
+    // In a real application, you would query your database for the attestation record
+    // For now, return a mock response
+    res.json({
+      ok: true,
+      txHash,
+      status: 'completed',
+      timestamp: Date.now(),
+      explorerUrl: `https://testnet.xrpl.org/transactions/${txHash}`,
+      message: 'Attestation verification completed'
+    });
+  });
+
+  // ============ API: Fund Test Account (Faucet) ============
+  app.post('/api/fund-account', async (req, res) => {
+    const { address } = req.body;
+    
+    if (!address) {
+      return res.status(400).json({ ok: false, error: 'Address is required' });
+    }
+    
+    try {
+      console.log('💰 Funding test account:', address);
+      
+      // Use XRPL testnet faucet
+      const faucetResponse = await fetch('https://faucet.altnet.rippletest.net/accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          destination: address,
+          amount: '1000' // 1000 XRP for testing
+        })
+      });
+      
+      if (faucetResponse.ok) {
+        const result = await faucetResponse.json();
+        console.log('✅ Faucet response:', result);
+        
+        res.json({
+          ok: true,
+          message: `Successfully funded ${address} with test XRP`,
+          txHash: result.txHash || 'N/A'
+        });
+      } else {
+        throw new Error(`Faucet request failed: ${faucetResponse.statusText}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Faucet error:', error);
+      res.status(500).json({ 
+        ok: false, 
+        error: `Failed to fund account: ${error.message}` 
+      });
+    }
+  });
+
+  // ============ API: Check Account Status ============
+  app.get('/api/account/:address', async (req, res) => {
+    const { address } = req.params;
+    
+    try {
+      const accountInfo = await xrplClient.request({
+        command: 'account_info',
+        account: address,
+        ledger_index: 'validated'
+      });
+      
+      const balance = accountInfo.result.account_data.Balance;
+      const sequence = accountInfo.result.account_data.Sequence;
+      
+      res.json({
+        ok: true,
+        address,
+        exists: true,
+        balance: xrpl.dropsToXrp(balance),
+        balanceDrops: balance,
+        sequence,
+        funded: parseInt(balance) >= 1000000 // 1 XRP minimum for testnet
+      });
+      
+    } catch (error) {
+      if (error.data?.error === 'actNotFound') {
+        res.json({
+          ok: true,
+          address,
+          exists: false,
+          balance: '0',
+          balanceDrops: '0',
+          funded: false,
+          message: 'Account not found - needs funding to activate'
+        });
+      } else {
+        res.status(500).json({
+          ok: false,
+          error: error.message
+        });
+      }
     }
   });
 
