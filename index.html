@@ -64,7 +64,38 @@
                     <span class="logo-ven">ven</span><span class="logo-morph">Morph</span><span class="logo-dot">.</span>
                 </div>
             </div>
-            <button class="connect-wallet" onclick="connectWallet()">Connect Wallet</button>
+            <div class="wallet-container">
+                <button class="connect-wallet" id="connectWalletBtn" onclick="toggleWalletDropdown()">
+                    <span id="walletBtnText">Connect Wallet</span>
+                    <svg class="wallet-arrow" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="currentColor" d="M8 12l-4-4h8z"/>
+                    </svg>
+                </button>
+                <div class="wallet-dropdown" id="walletDropdown">
+                    <div class="wallet-option" onclick="connectMetaMask()">
+                        <div class="wallet-icon metamask-icon">🦊</div>
+                        <span>MetaMask</span>
+                    </div>
+                    <div class="wallet-option" onclick="connectWalletConnect()">
+                        <div class="wallet-icon walletconnect-icon">🔗</div>
+                        <span>WalletConnect</span>
+                    </div>
+                    <div class="wallet-option" onclick="connectCoinbase()">
+                        <div class="wallet-icon coinbase-icon">🟦</div>
+                        <span>Coinbase Wallet</span>
+                    </div>
+                </div>
+                <div class="wallet-info" id="walletInfo" style="display: none;">
+                    <div class="wallet-account">
+                        <div class="account-avatar" id="accountAvatar">👤</div>
+                        <div class="account-details">
+                            <div class="account-address" id="accountAddress">0x...</div>
+                            <div class="account-balance" id="accountBalance">0 ETH</div>
+                        </div>
+                    </div>
+                    <button class="disconnect-btn" onclick="disconnectWallet()">Disconnect</button>
+                </div>
+            </div>
         </header>
 
         <!-- HOME PAGE -->
