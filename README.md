@@ -4,6 +4,18 @@
 
 A modern, responsive web application for cross-chain cryptocurrency payments and requests. Built with XRPL integration, GemWallet support, and real-time price conversion featuring smooth glass-morphism design and seamless user experience.
 
+## 🎥 **Live Demo Video**
+
+**🎬 Watch VenMorph in Action:**
+
+[![VenMorph Demo Video](https://img.shields.io/badge/▶️_WATCH_DEMO-Loom_Video-FF5722?style=for-the-badge&logo=loom)](https://www.loom.com/share/4e9a5df8899f4a54ad66193032628962?sid=f9e12f5e-0628-48ba-a014-91648a7ccd63)
+
+**🔗 Direct Link:** https://www.loom.com/share/4e9a5df8899f4a54ad66193032628962?sid=f9e12f5e-0628-48ba-a014-91648a7ccd63
+
+*See real-time Flare Oracle pricing, XRPL transactions, and GemWallet integration in action!*
+
+---
+
 ## ✨ Screenshots & Demo
 
 ### 🏠 **Home Page - Main Interface**
