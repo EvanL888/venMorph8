@@ -509,3 +509,41 @@ select.form-input::-webkit-scrollbar-thumb {
 select.form-input::-ms-expand {
     display: none;
 }
+
+/* Demo Payment Button Styles */
+.demo-payment-section {
+    margin-top: 15px;
+}
+
+.demo-payment-btn {
+    background: linear-gradient(45deg, #c1e328, #a8c920);
+    color: #333;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 0.95em;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.demo-payment-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(193, 227, 40, 0.3);
+}
+
+.demo-payment-btn:disabled {
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.demo-note {
+    text-align: center;
+    color: #666;
+}
