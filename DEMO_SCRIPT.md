@@ -3,6 +3,17 @@
 
 ---
 
+## 🎥 **Live Demo Video**
+
+**Watch the complete VenMorph demonstration:**
+[![VenMorph Live Demo](https://img.shields.io/badge/🎬_Watch_Demo-Loom_Video-00D4AA?style=for-the-badge)](https://www.loom.com/share/4e9a5df8899f4a54ad66193032628962?sid=f9e12f5e-0628-48ba-a014-91648a7ccd63)
+
+**Direct Link:** https://www.loom.com/share/4e9a5df8899f4a54ad66193032628962?sid=f9e12f5e-0628-48ba-a014-91648a7ccd63
+
+*This video showcases all the features described in the demo script below, including real-time Flare Oracle pricing and XRPL transactions.*
+
+---
+
 ## 🚀 **Demo Overview**
 *Duration: 8-10 minutes*
 
@@ -267,6 +278,10 @@ const paymentRequest = {
 ✅ **Safe testnet environment** for development  
 
 **"From request to settlement in seconds - that's the power of Request, Transform, Receive."**
+
+### 🎬 **See It In Action**
+For a complete visual walkthrough of all these features, watch our live demo video:
+**https://www.loom.com/share/4e9a5df8899f4a54ad66193032628962**
 
 ---
 
