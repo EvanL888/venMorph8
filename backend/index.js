@@ -19,17 +19,32 @@ const ftso = new ethers.Contract(FTSOV2_ADDRESS, ftsoAbi, provider);
 const FEED_IDS = {
   ETH: '0x014554482f55534400000000000000000000000000', // ETH/USD
   XRP: '0x015852502f55534400000000000000000000000000', // XRP/USD
-  BTC: '0x014254432f55534400000000000000000000000000'  // BTC/USD
+  BTC: '0x014254432f55534400000000000000000000000000', // BTC/USD
+  USDT: '0x015553445420202020202020202020202020202020' // USDT/USD (example feed ID)
 };
 
 // helper：读取某个资产的 USD 价格
 async function getPriceUSD(symbol) {
+  // Handle USDT with stable rate (since it's pegged to USD)
+  if (symbol === 'USDT') {
+    return { price: 1.0, timestamp: Date.now() / 1000 };
+  }
+  
   const feedId = FEED_IDS[symbol];
   if (!feedId) throw new Error('Unsupported asset: ' + symbol);
-  const res = await ftso.getFeedByIdInWei.staticCall(feedId);
-  const valueWei = BigInt(res[0].toString());
-  const price = Number(valueWei) / 1e18;
-  return { price, timestamp: Number(res[1]) };
+  
+  try {
+    const res = await ftso.getFeedByIdInWei.staticCall(feedId);
+    const valueWei = BigInt(res[0].toString());
+    const price = Number(valueWei) / 1e18;
+    return { price, timestamp: Number(res[1]) };
+  } catch (error) {
+    // If FTSO fails for USDT, return stable rate
+    if (symbol === 'USDT') {
+      return { price: 1.0, timestamp: Date.now() / 1000 };
+    }
+    throw error;
+  }
 }
 
 // ============ XRPL 配置 ==============

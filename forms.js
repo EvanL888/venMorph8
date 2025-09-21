@@ -395,6 +395,321 @@ window.testPayment = testPayment;
 window.getStoredHashes = getStoredHashes;
 window.showHashInfo = showHashInfo;
 
+// PAY PAGE FUNCTIONALITY
+function updatePayAsset() {
+    const assetSelect = document.getElementById('payAssetSelect');
+    const amountInput = document.getElementById('payAmountInput');
+    const formTitle = document.getElementById('payFormTitle');
+    const recipientInput = document.getElementById('payRecipientInput');
+    
+    const selectedAsset = assetSelect.value;
+    const amount = amountInput.value || '20';
+    const recipient = recipientInput.value || 'Alice';
+    
+    // Update the form title
+    formTitle.innerHTML = `Send ${amount} ${selectedAsset}<br>to ${recipient}`;
+    
+    // Update conversion display
+    updatePayConversion(selectedAsset, amount);
+}
+
+function updatePayAmount() {
+    updatePayAsset(); // Reuse the same logic
+}
+
+function updatePayRecipient() {
+    updatePayAsset(); // Reuse the same logic
+}
+
+function updatePayConversion(asset, amount) {
+    const conversionAmount = document.getElementById('payConversionAmount');
+    const conversionXrp = document.getElementById('payConversionXrp');
+    
+    // If the selected asset is already XRP, show USDT conversion instead
+    if (asset === 'XRP') {
+        // Fetch XRP to USDT conversion
+        fetchCryptoToXrpConversion('XRP', amount, 'USDT')
+            .then(data => {
+                if (data.ok) {
+                    const usdtAmount = data.equivalent.toFixed(2);
+                    conversionAmount.textContent = `${amount} XRP ≈`;
+                    conversionXrp.textContent = `≈ ${usdtAmount} USDT`;
+                } else {
+                    useMockXrpToUsdtConversion(amount, conversionAmount, conversionXrp);
+                }
+            })
+            .catch(error => {
+                console.warn('Failed to fetch live rates, using fallback:', error);
+                useMockXrpToUsdtConversion(amount, conversionAmount, conversionXrp);
+            });
+    } else {
+        // Convert other cryptocurrencies to XRP
+        fetchCryptoToXrpConversion(asset, amount)
+            .then(data => {
+                if (data.ok) {
+                    const xrpAmount = data.equivalent.toFixed(6);
+                    conversionAmount.textContent = `${amount} ${asset} ≈`;
+                    conversionXrp.textContent = `≈ ${xrpAmount} XRP`;
+                } else {
+                    useMockCryptoToXrpConversion(asset, amount, conversionAmount, conversionXrp);
+                }
+            })
+            .catch(error => {
+                console.warn('Failed to fetch live rates, using fallback:', error);
+                useMockCryptoToXrpConversion(asset, amount, conversionAmount, conversionXrp);
+            });
+    }
+}
+
+// Helper function to fetch crypto to XRP conversion rates
+async function fetchCryptoToXrpConversion(from, amount, to = 'XRP') {
+    try {
+        const response = await fetch(`/api/price/quote?from=${from}&to=${to}&amount=${amount}`);
+        return await response.json();
+    } catch (error) {
+        throw new Error('API request failed: ' + error.message);
+    }
+}
+
+// Fallback mock conversion for pay page
+function useMockPayConversion(asset, amount, conversionAmount, conversionXrp) {
+    const usdRates = {
+        'XRP': 0.62,
+        'ETH': 2500,
+        'BTC': 45000,
+        'USDC': 1.0,
+        'USDT': 1.0,
+        'ADA': 0.35,
+        'SOL': 140,
+        'DOT': 6.5
+    };
+    
+    const rate = usdRates[asset] || 1;
+    const usdAmount = (parseFloat(amount) * rate).toFixed(2);
+    
+    conversionAmount.textContent = `${amount} ${asset} ≈`;
+    conversionXrp.textContent = `≈ $${usdAmount} USD (estimated)`;
+}
+
+// Mock conversion rates from crypto to XRP for fallback
+function useMockCryptoToXrpConversion(asset, amount, conversionAmountEl, conversionXrpEl) {
+    const xrpRates = {
+        'ETH': 4807.69, // 1 ETH ≈ 4807.69 XRP (example rate)
+        'BTC': 86538.46, // 1 BTC ≈ 86538.46 XRP (example rate)  
+        'USD': 1.92, // 1 USD ≈ 1.92 XRP (example rate)
+        'USDC': 1.92, // 1 USDC ≈ 1.92 XRP
+        'USDT': 1.92, // 1 USDT ≈ 1.92 XRP
+        'ADA': 0.67, // 1 ADA ≈ 0.67 XRP
+        'SOL': 269.23, // 1 SOL ≈ 269.23 XRP
+        'DOT': 12.5 // 1 DOT ≈ 12.5 XRP
+    };
+    
+    const rate = xrpRates[asset] || 1;
+    const xrpAmount = (parseFloat(amount) * rate).toFixed(6);
+    conversionAmountEl.textContent = `${amount} ${asset} ≈`;
+    conversionXrpEl.textContent = `≈ ${xrpAmount} XRP (estimated)`;
+}
+
+// Mock conversion rates from XRP to USDT for fallback
+function useMockXrpToUsdtConversion(amount, conversionAmountEl, conversionXrpEl) {
+    const xrpToUsdtRate = 0.62; // 1 XRP ≈ 0.62 USDT (example rate)
+    const usdtAmount = (parseFloat(amount) * xrpToUsdtRate).toFixed(2);
+    conversionAmountEl.textContent = `${amount} XRP ≈`;
+    conversionXrpEl.textContent = `≈ ${usdtAmount} USDT (estimated)`;
+}
+
+// Send payment functionality
+async function sendPayment() {
+    const btn = document.querySelector('.send-payment-btn');
+    const originalText = btn.textContent;
+    
+    // Get form data
+    const assetSelect = document.getElementById('payAssetSelect');
+    const amountInput = document.getElementById('payAmountInput');
+    const recipientInput = document.getElementById('payRecipientInput');
+    const messageInput = document.getElementById('payMessageInput');
+    
+    // Check if wallet is connected
+    if (!window.walletState || !window.walletState.isConnected) {
+        alert('Please connect your XRPL wallet first!');
+        return;
+    }
+    
+    // Show sending state
+    btn.textContent = 'Sending Payment...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    
+    try {
+        // Create a mock request ID for direct payment
+        const directPaymentId = 'direct_' + Date.now();
+        
+        // Use the XRPL payment function from wallet.js
+        const result = await window.processXRPLPayment(directPaymentId, parseFloat(amountInput.value));
+        
+        if (result.ok) {
+            btn.textContent = '✅ Payment Sent!';
+            btn.style.background = 'linear-gradient(45deg, #4CAF50, #45a049)';
+            
+            // Show success notification
+            showPaymentSuccessNotification(result);
+            
+            // Clear form
+            amountInput.value = '';
+            messageInput.value = '';
+            
+            console.log('Direct payment successful:', result);
+        } else {
+            throw new Error(result.error || 'Payment failed');
+        }
+    } catch (error) {
+        console.error('Payment error:', error);
+        btn.textContent = '❌ Payment Failed';
+        btn.style.background = 'linear-gradient(45deg, #f44336, #da190b)';
+        
+        alert('Payment failed: ' + error.message);
+    } finally {
+        // Reset button after delay
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = 'linear-gradient(135deg, #c1e328 0%, #a8c920 100%)';
+            btn.style.opacity = '1';
+            btn.disabled = false;
+        }, 3000);
+    }
+}
+
+// Load pending requests from backend
+async function loadPendingRequests() {
+    const container = document.getElementById('requestsContainer');
+    const noRequestsMessage = document.getElementById('noRequestsMessage');
+    
+    try {
+        // Get wallet address for requests
+        const walletAddress = window.walletState?.account || 'rwJDVy2wDUc3cP5GaPrQTyLZGqNdgTcMbk';
+        
+        const response = await fetch(`/api/requests/${walletAddress}`);
+        const data = await response.json();
+        
+        if (data.ok && data.requests.length > 0) {
+            noRequestsMessage.style.display = 'none';
+            container.innerHTML = ''; // Clear existing requests
+            
+            data.requests.forEach(request => {
+                if (request.status === 'OPEN') {
+                    const requestElement = createRequestElement(request);
+                    container.appendChild(requestElement);
+                }
+            });
+        } else {
+            noRequestsMessage.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Failed to load requests:', error);
+        // Show some mock requests for demo
+        showMockRequests();
+    }
+}
+
+// Create request element
+function createRequestElement(request) {
+    const requestDiv = document.createElement('div');
+    requestDiv.className = 'request-item';
+    requestDiv.innerHTML = `
+        <div class="request-info">
+            <div class="request-header">
+                <div class="request-avatar">${getInitials(request.requesterAddress)}</div>
+                <div class="request-details">
+                    <div class="request-from">Request from ${request.requesterAddress.substring(0, 10)}...</div>
+                    <div class="request-amount">${request.amount} ${request.asset}</div>
+                    <div class="request-message">${request.note || 'No message'}</div>
+                </div>
+            </div>
+        </div>
+        <div class="request-actions">
+            <button class="action-btn accept-btn" onclick="acceptRequest('${request.requestId}')">Accept</button>
+            <button class="action-btn decline-btn" onclick="declineRequest('${request.requestId}')">Decline</button>
+        </div>
+    `;
+    return requestDiv;
+}
+
+// Show mock requests for demo
+function showMockRequests() {
+    const container = document.getElementById('requestsContainer');
+    const noRequestsMessage = document.getElementById('noRequestsMessage');
+    
+    noRequestsMessage.style.display = 'none';
+    container.innerHTML = '';
+    
+    const mockRequests = [
+        { requestId: 'mock_1', requesterAddress: 'rBobExample123...', amount: 5, asset: 'XRP', note: 'Coffee payment' },
+        { requestId: 'mock_2', requesterAddress: 'rAliceExample456...', amount: 0.01, asset: 'ETH', note: 'Split the dinner bill' },
+        { requestId: 'mock_3', requesterAddress: 'rCharlieExample789...', amount: 25, asset: 'USDC', note: 'Concert tickets' }
+    ];
+    
+    mockRequests.forEach(request => {
+        const requestElement = createRequestElement(request);
+        container.appendChild(requestElement);
+    });
+}
+
+// Get initials from address
+function getInitials(address) {
+    return address.substring(1, 3).toUpperCase();
+}
+
+// Accept request
+async function acceptRequest(requestId) {
+    if (!window.walletState || !window.walletState.isConnected) {
+        alert('Please connect your XRPL wallet first!');
+        return;
+    }
+    
+    try {
+        const result = await window.processXRPLPayment(requestId, 5); // Use amount from request
+        
+        if (result.ok) {
+            showPaymentSuccessNotification(result);
+            // Remove the request from the list
+            document.querySelector(`[onclick="acceptRequest('${requestId}')"]`).closest('.request-item').remove();
+            
+            // Check if any requests remain
+            const remainingRequests = document.querySelectorAll('.request-item');
+            if (remainingRequests.length === 0) {
+                document.getElementById('noRequestsMessage').style.display = 'block';
+            }
+        }
+    } catch (error) {
+        alert('Failed to accept request: ' + error.message);
+    }
+}
+
+// Decline request
+function declineRequest(requestId) {
+    if (confirm('Are you sure you want to decline this request?')) {
+        // Remove the request from the list
+        document.querySelector(`[onclick="declineRequest('${requestId}')"]`).closest('.request-item').remove();
+        
+        // Check if any requests remain
+        const remainingRequests = document.querySelectorAll('.request-item');
+        if (remainingRequests.length === 0) {
+            document.getElementById('noRequestsMessage').style.display = 'block';
+        }
+        
+        console.log('Request declined:', requestId);
+    }
+}
+
+// Export new functions to global scope
+window.updatePayAsset = updatePayAsset;
+window.updatePayAmount = updatePayAmount;
+window.updatePayRecipient = updatePayRecipient;
+window.sendPayment = sendPayment;
+window.loadPendingRequests = loadPendingRequests;
+window.acceptRequest = acceptRequest;
+window.declineRequest = declineRequest;
+
 // Export functions
 window.updateAsset = updateAsset;
 window.updateAmount = updateAmount;

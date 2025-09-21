@@ -345,3 +345,204 @@
     font-size: 14px;
     word-break: break-all;
 }
+
+/* PAY PAGE STYLES */
+.pay-page {
+    display: none;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.pay-page.active {
+    display: block;
+}
+
+.pay-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.pay-send-section {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 40px;
+    align-items: start;
+}
+
+.send-form {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 40px;
+    backdrop-filter: blur(20px);
+}
+
+.send-payment-btn {
+    background: linear-gradient(135deg, #c1e328 0%, #a8c920 100%);
+    color: #21211f;
+    border: none;
+    padding: 20px 40px;
+    border-radius: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 24px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.send-payment-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(193, 227, 40, 0.3);
+}
+
+.pay-info-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 32px;
+    backdrop-filter: blur(20px);
+    height: fit-content;
+}
+
+.pending-requests-section {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 32px;
+    backdrop-filter: blur(20px);
+}
+
+.section-icon {
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.requests-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.request-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.request-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.request-info {
+    flex: 1;
+}
+
+.request-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.request-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c1e328, #a8c920);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #21211f;
+    font-weight: 600;
+}
+
+.request-details {
+    flex: 1;
+}
+
+.request-amount {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.request-from {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 4px;
+}
+
+.request-message {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.request-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.accept-btn {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.accept-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.decline-btn {
+    background: rgba(255, 0, 0, 0.1);
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.decline-btn:hover {
+    background: rgba(255, 0, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+.no-requests {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.no-requests-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.no-requests-text {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.no-requests-subtext {
+    font-size: 14px;
+    opacity: 0.7;
+}

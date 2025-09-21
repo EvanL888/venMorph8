@@ -1,6 +1,38 @@
 /* Responsive design styles for mobile and tablet */
 
 @media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+    }
+    
+    .main-nav {
+        order: 2;
+        margin: 0;
+        width: 100%;
+    }
+    
+    .nav-links {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .nav-link {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+    
+    .nav-icon {
+        font-size: 14px;
+    }
+    
+    .wallet-container {
+        order: 3;
+    }
+    
     .hero-title {
         font-size: 52px;
         letter-spacing: -1px;
@@ -51,6 +83,29 @@
         grid-template-columns: 1fr;
     }
     
+    .pay-send-section {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    
+    .pay-info-panel {
+        order: -1; /* Show conversion info first on mobile */
+    }
+    
+    .request-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+    
+    .request-actions {
+        justify-content: stretch;
+    }
+    
+    .action-btn {
+        flex: 1;
+    }
+    
     .cta-section {
         padding: 80px 40px;
         min-height: 70vh;
@@ -66,6 +121,25 @@
 @media (max-width: 480px) {
     .container {
         padding: 15px;
+    }
+    
+    .nav-links {
+        gap: 4px;
+        padding: 6px;
+    }
+    
+    .nav-link {
+        padding: 8px 12px;
+        font-size: 12px;
+        gap: 6px;
+    }
+    
+    .nav-link span:not(.nav-icon) {
+        display: none; /* Hide text on very small screens, show only icons */
+    }
+    
+    .nav-icon {
+        font-size: 16px;
     }
     
     .hero-title {

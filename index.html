@@ -64,6 +64,25 @@
                     <span class="logo-ven">ven</span><span class="logo-morph">Morph</span><span class="logo-dot">.</span>
                 </div>
             </div>
+            
+            <!-- Navigation Bar -->
+            <nav class="main-nav">
+                <div class="nav-links">
+                    <button class="nav-link active" onclick="showHome()" id="homeNav">
+                        <span class="nav-icon">🏠</span>
+                        <span>Home</span>
+                    </button>
+                    <button class="nav-link" onclick="showRequestPage()" id="requestNav">
+                        <span class="nav-icon">📝</span>
+                        <span>Request</span>
+                    </button>
+                    <button class="nav-link" onclick="showPayPage()" id="payNav">
+                        <span class="nav-icon">💰</span>
+                        <span>Pay</span>
+                    </button>
+                </div>
+            </nav>
+            
             <div class="wallet-container">
                 <button class="connect-wallet" id="connectWalletBtn" onclick="toggleWalletDropdown()">
                     <span id="walletBtnText">Connect Wallet</span>
@@ -370,6 +389,78 @@
                             <span>QR code</span>
                         </div>
                         <div class="crowdfund-link">venmorph.app/request/v...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pay Page -->
+        <div class="pay-page" id="payPage" style="display: none;">
+            <button class="back-btn" onclick="showHome()">← Back to Home</button>
+            
+            <div class="pay-content">
+                <!-- Send Money Section -->
+                <div class="pay-send-section">
+                    <div class="send-form">
+                        <h1 class="form-title" id="payFormTitle">Send 20 XRP<br>to Alice</h1>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Asset</label>
+                            <div class="form-row">
+                                <select class="form-input" id="payAssetSelect" onchange="updatePayAsset()">
+                                    <option value="XRP">XRP - Ripple</option>
+                                    <option value="ETH">ETH - Ethereum</option>
+                                    <option value="BTC">BTC - Bitcoin</option>
+                                    <option value="USDC">USDC - USD Coin</option>
+                                    <option value="USDT">USDT - Tether</option>
+                                    <option value="ADA">ADA - Cardano</option>
+                                    <option value="SOL">SOL - Solana</option>
+                                    <option value="DOT">DOT - Polkadot</option>
+                                </select>
+                                <input type="number" class="form-input" id="payAmountInput" value="20" step="0.01" min="0" placeholder="Amount" onchange="updatePayAmount()">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Recipient</label>
+                            <input type="text" class="form-input" id="payRecipientInput" value="alice.eth" placeholder="Enter recipient name or address" onchange="updatePayRecipient()">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Message</label>
+                            <input type="text" class="form-input" id="payMessageInput" placeholder="Add a message..." value="Thanks for dinner!">
+                        </div>
+
+                        <button class="send-payment-btn" onclick="sendPayment()">Send Payment</button>
+                    </div>
+
+                    <div class="pay-info-panel">
+                        <div class="live-conversion">
+                            <div class="conversion-header">
+                                <span>Live Conversion</span>
+                                <span class="pulse">ⓘ</span>
+                            </div>
+                            <div class="conversion-amount" id="payConversionAmount">100 XRP ≈</div>
+                            <div class="conversion-xrp" id="payConversionXrp">≈ 62.00 USDT</div>
+                            <div class="conversion-source">via Flare Oracle</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Requests Section -->
+                <div class="pending-requests-section">
+                    <h2 class="section-title">
+                        <span class="section-icon">📨</span>
+                        Pending Requests
+                    </h2>
+                    
+                    <div class="requests-container" id="requestsContainer">
+                        <!-- Requests will be loaded here -->
+                        <div class="no-requests" id="noRequestsMessage">
+                            <div class="no-requests-icon">📭</div>
+                            <div class="no-requests-text">No pending requests</div>
+                            <div class="no-requests-subtext">Create a request to get started</div>
+                        </div>
                     </div>
                 </div>
             </div>
